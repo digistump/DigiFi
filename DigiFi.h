@@ -10,7 +10,7 @@
 class DigiFi
 {
     public:
-        static const int requestTimeout = 5;
+        static const int requestTimeout = 15;
         DigiFi();
         void begin(int aBaud);
         bool ready();
@@ -102,6 +102,7 @@ class DigiFi
         String readResponse(int contentLength);
         String aHeader;
         String aBody;
+        String lastHost;
 };
 
 #endif
