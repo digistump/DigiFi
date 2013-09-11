@@ -18,17 +18,12 @@ void DigiFi::startATMode()
 {
     //silly init sequence for wifi module
     while(Serial1.available()){Serial1.read();} 
-    //debug("start at mode");
-    Serial1.write("+");
-    delay(1);
+    debug("start at mode");
     debug("next");
-    Serial1.write("+");
-    delay(1);
-    Serial1.write("+");
-    delay(1);
-    //debug("wait for a");
+    Serial1.write("+++");
+    debug("wait for a");
     while(!Serial1.available()){delay(1);}
-    //debug("clear buffer");
+    debug("clear buffer");
     while(Serial1.available()){Serial1.read();}
     Serial1.print("A"); 
     debug(readResponse(0));
@@ -51,52 +46,49 @@ void DigiFi::endATMode()
 bool DigiFi::ready(){
     startATMode();
     //debug("send cmd");
-    Serial1.print("AT+WSLK\r");
     //+ok=<ret><CR>< LF ><CR>< LF >
     //”Disconnected”, if no WiFi connection;
     //”AP’ SSID（AP’s MAC” ）, if WiFi connection available;
     //”RF Off”, if WiFi OFF;
-    String ret = readResponse(0);
+    debug("Check Link");
+    String ret = STALinkStatus();
     debug("OUT");
     debug(ret);
     endATMode();
+    debug(ret);
     //change this to report the AP it is connected to
     if(ret.substring(0,3) == "+ok" && ret != "+ok=RF Off" && ret != "+ok=Disconnected")
         return 1;
     else
         return 0;
-
 }
 
 bool DigiFi::connect(char *aHost){
     debug("Connect");
     startATMode();
     debug("send client settings");
+    setTCPConn("off");
     //assuming port 80 for now
-    Serial1.print("AT+NETP=TCP,CLIENT,80,");
-    Serial1.print(aHost);
-    Serial1.print("\r");
-    //+ok
-    String ret = readResponse(0);
-    debug(ret);
-    if(ret.substring(0,3) != "+ok")
-        return 0;
+    String conn=getNetParams();
+    conn=conn.substring(4,conn.length()-4);
+    if(conn != lastHost)
+        setNetParams("TCP","CLIENT",80,aHost);
+    
+    lastHost = conn;
 
+    setTCPConn("On");
+    
     debug("Checking for link build up");
-    Serial1.print("AT+TCPLK\r");
-    String status = readResponse(0);
+    String status=getTCPLnk();
     while(status.substring(0,6)!="+ok=on"){
         debug("Re-checking for link build up");
-        Serial1.print("AT+TCPLK\r");
-        status = readResponse(0);
+        status=getTCPLnk();
         debug(status);
     }
 
     endATMode();
     
     return 1;
-        
-
 }
 
 String DigiFi::body(){
@@ -133,13 +125,14 @@ bool DigiFi::get(char *aHost, char *aPath){
         debug("wait for response...");
         bool success = true;
         int i=0;
+        int st = millis();
         while(!Serial1.available()){
-            delay(10);  
-            if(i>100*requestTimeout) {
+            if(millis() - st > requestTimeout * 1000) {
                 success = false; 
                 break;
             } 
-            debugWrite('.');
+            if(((millis() - st) % 1000) == 1)
+                debugWrite('.');
             i++; 
         }
         debug("get header");
@@ -212,13 +205,14 @@ bool DigiFi::post(char *aHost, char *aPath, String postData){
         debug("wait for response...");
         bool success = true;
         int i=0;
+        int st = millis();
         while(!Serial1.available()){
-            delay(10);  
-            if(i>100*requestTimeout) {
+            if(millis() - st > requestTimeout * 1000) {
                 success = false; 
                 break;
             } 
-            debugWrite('.');
+            if(((millis() - st) % 1000) == 1)
+                debugWrite('.');
             i++; 
         }
         
