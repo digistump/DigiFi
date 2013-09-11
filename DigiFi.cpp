@@ -293,11 +293,19 @@ String DigiFi::readResponse(int contentLength) //0 = cmd, 1 = header, 2=body
                 end = true;
             
             stringBuffer += inByte;
-
         }
     }
 
+    if(stringBuffer.substring(0,4) == "+ERR")
+        lastErr = stringBuffer.substring(5,2).toInt();
+    else
+        lastErr = 0;
     return stringBuffer;
+}
+
+int DigiFi::lastError()
+{
+    return lastErr;
 }
 
 String DigiFi::AT(char *cmd, char *params)
@@ -364,26 +372,35 @@ void DigiFi::factoryRestore() //RELD rebooting...
 void DigiFi::reset() //Z (No return)
 {
     Serial1.print("AT+Z\r");
-    readResponse(0);
+    //readResponse(0);
+    lastErr=0; //This command doesnt return anything.
 }
 String DigiFi::help()//H
 {
     Serial1.print("AT+H\r");
     return readResponse(0);
 }
-String DigiFi::readConfig()//CFGRD
+int DigiFi::readConfig(byte* buffer)//CFGRD
 {
     Serial1.print("AT+CFGRD\r");
-    return readResponse(0);
+    Serial1.readBytes((char*)buffer,4);
+    if((char*)buffer=="+ERR")
+        return; //TODO Set lastErr here (Technically it shouldn't ever error here)
+    Serial1.readBytes((char*)buffer,2);
+    int len=(int)word(buffer[1],buffer[0]);
+    Serial1.readBytes((char*)buffer,len);
+    return len;
 }
-void DigiFi::writeConfig(char *config)//CFGWR
+void DigiFi::writeConfig(byte* config, int len)//CFGWR
 {
     Serial1.print("AT+CFGWR=");
-    Serial1.print(config);
+    serial.write(highByte(len));
+    serial.write(lowByte(len));
+    Serial1.write(config,len);
     Serial1.print("\r");
     readResponse(0);
 }
-String DigiFi::readFactoryDef()//CFGFR
+int DigiFi::readFactoryDef(byte* buffer)//CFGFR
 {
     Serial1.print("AT+CFGFR\r");
     return readResponse(0);
