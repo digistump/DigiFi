@@ -22,6 +22,7 @@ class DigiFi
         void close();
         String header();
         String body();
+        int lastError();
         void debug(String output);
         void debugWrite(char output);
         String URLEncode(char *smsg);
@@ -37,9 +38,9 @@ class DigiFi
         void factoryRestore(); //RELD rebooting...
         void reset(); //Z (No return)
         String help();//H
-        String readConfig();//CFGRD
-        void writeConfig(char *config);//CFGWR
-        String readFactoryDef();//CFGFR
+        int readConfig(byte* buffer);//CFGRD
+        void writeConfig(byte* config, int len);//CFGWR
+        int readFactoryDef(byte* buffer);//CFGFR
         void makeFactory(); //CFGTF
         String getUart();//UART baudrate,data_bits,stop_bit,parity
         void setUart(int baudrate,int data_bits,int stop_bit,char *parity);
@@ -103,6 +104,7 @@ class DigiFi
         String aHeader;
         String aBody;
         String lastHost;
+        int lastErr;
 };
 
 #endif
