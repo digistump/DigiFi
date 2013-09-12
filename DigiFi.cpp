@@ -385,7 +385,7 @@ int DigiFi::readConfig(byte* buffer)//CFGRD
     Serial1.print("AT+CFGRD\r");
     Serial1.readBytes((char*)buffer,4);
     if((char*)buffer=="+ERR")
-        return; //TODO Set lastErr here (Technically it shouldn't ever error here)
+        return -1; //TODO Set lastErr here (Technically it shouldn't ever error here)
     Serial1.readBytes((char*)buffer,2);
     int len=(int)word(buffer[1],buffer[0]);
     Serial1.readBytes((char*)buffer,len);
@@ -405,7 +405,7 @@ int DigiFi::readFactoryDef(byte* buffer)//CFGFR
     Serial1.print("AT+CFGFR\r");
     Serial1.readBytes((char*)buffer,4);
     if((char*)buffer=="+ERR")
-        return; //TODO Set lastErr here (Technically it shouldn't ever error here)
+        return -1; //TODO Set lastErr here (Technically it shouldn't ever error here)
     Serial1.readBytes((char*)buffer,2);
     int len=(int)word(buffer[1],buffer[0]);
     Serial1.readBytes((char*)buffer,len);
