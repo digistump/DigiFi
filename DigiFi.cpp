@@ -385,7 +385,7 @@ int DigiFi::readConfig(byte* buffer)//CFGRD
     Serial1.print("AT+CFGRD\r");
     Serial1.readBytes((char*)buffer,4);
     if((char*)buffer=="+ERR")
-        return; //TODO Set lastErr here (Technically it shouldn't ever error here)
+        return -1; //TODO Set lastErr here (Technically it shouldn't ever error here)
     Serial1.readBytes((char*)buffer,2);
     int len=(int)word(buffer[1],buffer[0]);
     Serial1.readBytes((char*)buffer,len);
@@ -394,8 +394,8 @@ int DigiFi::readConfig(byte* buffer)//CFGRD
 void DigiFi::writeConfig(byte* config, int len)//CFGWR
 {
     Serial1.print("AT+CFGWR=");
-    serial.write(highByte(len));
-    serial.write(lowByte(len));
+    Serial1.write(highByte(len));
+    Serial1.write(lowByte(len));
     Serial1.write(config,len);
     Serial1.print("\r");
     readResponse(0);
@@ -403,7 +403,13 @@ void DigiFi::writeConfig(byte* config, int len)//CFGWR
 int DigiFi::readFactoryDef(byte* buffer)//CFGFR
 {
     Serial1.print("AT+CFGFR\r");
-    return readResponse(0);
+    Serial1.readBytes((char*)buffer,4);
+    if((char*)buffer=="+ERR")
+        return -1; //TODO Set lastErr here (Technically it shouldn't ever error here)
+    Serial1.readBytes((char*)buffer,2);
+    int len=(int)word(buffer[1],buffer[0]);
+    Serial1.readBytes((char*)buffer,len);
+    return len;
 }
 void DigiFi::makeFactory() //CFGTF
 {
