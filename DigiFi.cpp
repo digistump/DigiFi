@@ -394,8 +394,8 @@ int DigiFi::readConfig(byte* buffer)//CFGRD
 void DigiFi::writeConfig(byte* config, int len)//CFGWR
 {
     Serial1.print("AT+CFGWR=");
-    serial.write(highByte(len));
-    serial.write(lowByte(len));
+    Serial1.write(highByte(len));
+    Serial1.write(lowByte(len));
     Serial1.write(config,len);
     Serial1.print("\r");
     readResponse(0);
