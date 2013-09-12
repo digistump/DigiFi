@@ -403,7 +403,13 @@ void DigiFi::writeConfig(byte* config, int len)//CFGWR
 int DigiFi::readFactoryDef(byte* buffer)//CFGFR
 {
     Serial1.print("AT+CFGFR\r");
-    return readResponse(0);
+    Serial1.readBytes((char*)buffer,4);
+    if((char*)buffer=="+ERR")
+        return; //TODO Set lastErr here (Technically it shouldn't ever error here)
+    Serial1.readBytes((char*)buffer,2);
+    int len=(int)word(buffer[1],buffer[0]);
+    Serial1.readBytes((char*)buffer,len);
+    return len;
 }
 void DigiFi::makeFactory() //CFGTF
 {
