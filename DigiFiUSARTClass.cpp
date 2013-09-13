@@ -30,16 +30,19 @@ DigiFiUSARTClass::DigiFiUSARTClass( Usart* pUsart, IRQn_Type dwIrq, uint32_t dwI
   _pUsart=pUsart ;
   _dwIrq=dwIrq ;
   _dwId=dwId ;
+  ctsEn=false;
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
 
 void DigiFiUSARTClass::begin( const uint32_t dwBaudRate )
 {
-
-  pinMode(DIGIFI_CTS, OUTPUT);
-  digitalWrite(DIGIFI_CTS, HIGH);
-  cts=HIGH;
+  if(ctsEn)
+  {
+      pinMode(DIGIFI_CTS, OUTPUT);
+      digitalWrite(DIGIFI_CTS, HIGH);
+      cts=HIGH;
+  }
   
   // Configure PMC
   pmc_enable_periph_clk( _dwId ) ;
@@ -67,8 +70,15 @@ void DigiFiUSARTClass::begin( const uint32_t dwBaudRate )
   // Enable receiver and transmitter
   _pUsart->US_CR = US_CR_RXEN | US_CR_TXEN ;
   
-  available();
-  ctsCheck();
+  if(ctsEn)
+    ctsCheck();
+}
+
+void DigiFiUSARTClass::setFlowControl(boolean enabled)
+{
+    ctsEn=enabled;
+    if(ctsEn)
+        ctsCheck();
 }
 
 void DigiFiUSARTClass::end( void )
@@ -87,8 +97,7 @@ void DigiFiUSARTClass::end( void )
 
 int DigiFiUSARTClass::available( void )
 {
-  avail = (uint32_t)(DIGIFI_SERIAL_BUFFER_SIZE + _rx_buffer->_iHead - _rx_buffer->_iTail) % DIGIFI_SERIAL_BUFFER_SIZE ;
-  return avail;
+  return (uint32_t)(DIGIFI_SERIAL_BUFFER_SIZE + _rx_buffer->_iHead - _rx_buffer->_iTail) % DIGIFI_SERIAL_BUFFER_SIZE ;
 }
 
 int DigiFiUSARTClass::peek( void )
@@ -107,8 +116,8 @@ int DigiFiUSARTClass::read( void )
 
   uint8_t uc = _rx_buffer->_aucBuffer[_rx_buffer->_iTail] ;
   _rx_buffer->_iTail = (unsigned int)(_rx_buffer->_iTail + 1) % DIGIFI_SERIAL_BUFFER_SIZE ;
-  available();
-  ctsCheck();
+  if(ctsEn)
+    ctsCheck();
   return uc ;
 }
 
@@ -131,7 +140,8 @@ size_t DigiFiUSARTClass::write( const uint8_t uc_data )
 }
 
 void DigiFiUSARTClass::ctsCheck()
-{
+{   
+    avail=available();
     if(avail > DIGIFI_SERIAL_BUFFER_SIZE - 64 && cts==LOW)
     {
         digitalWrite(DIGIFI_CTS, HIGH);
@@ -159,8 +169,7 @@ void DigiFiUSARTClass::IrqHandler( void )
 	// TODO: error reporting outside ISR
     _pUsart->US_CR |= US_CR_RSTSTA;
   }
-  
-  available();
-  ctsCheck();
+  if(ctsEn)
+    ctsCheck();
 }
 

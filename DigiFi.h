@@ -9,11 +9,11 @@
 #ifdef __cplusplus
 
 #include "DigiFiUSARTClass.h"
-extern DigiFiUSARTClass Serial1;
+extern DigiFiUSARTClass DigiFiSerial;
 
 #endif
 
-class DigiFi
+class DigiFi : Stream
 {
     public:
         static const int requestTimeout = 15;
@@ -32,6 +32,17 @@ class DigiFi
         void debug(String output);
         void debugWrite(char output);
         String URLEncode(char *smsg);
+        void setFlowControl(boolean);
+        
+        /* Stream Implementation */
+        int available( void ) ;
+        int peek( void ) ;
+        int read( void ) ;
+        void flush( void ) ;
+        size_t write( const uint8_t c ) ;
+        using Print::write ; // pull in write(str) and write(buf, size) from Print
+        
+        /* AT Wrappers */
         String AT(char *cmd, char *params);
         void toggleEcho(); //E
         String getWifiMode(); //WMODE AP STA APSTA

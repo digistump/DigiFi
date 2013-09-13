@@ -38,6 +38,7 @@ class DigiFiUSARTClass : public HardwareSerial
     IRQn_Type _dwIrq ;
     uint32_t _dwId ;
     int cts;
+    int ctsEn;
     int avail;
     
   public:
@@ -45,6 +46,7 @@ class DigiFiUSARTClass : public HardwareSerial
 
     void begin( const uint32_t dwBaudRate ) ;
     void end( void ) ;
+    void setFlowControl( boolean );
     int available( void ) ;
     int peek( void ) ;
     int read( void ) ;
