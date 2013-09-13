@@ -1,7 +1,18 @@
 // DigiX WiFi module example - released by Digistump LLC/Erik Kettenburg under CC-BY-SA 3.0
 
 #include "DigiFi.h"
-//#define DEBUG
+#include "DigiFiRingBuffer.h"
+#include "DigiFiUSARTClass.h"
+#define DEBUG
+
+DigiFiRingBuffer digifi_rx_buffer;
+DigiFiUSARTClass Serial1(USART0, USART0_IRQn, ID_USART0, &digifi_rx_buffer);
+
+
+void USART0_Handler(void)
+{
+  Serial1.IrqHandler();
+}
 
 DigiFi::DigiFi()
 {
@@ -11,6 +22,27 @@ DigiFi::DigiFi()
 void DigiFi::begin(int aBaud)
 {
     Serial1.begin(aBaud);
+    
+    /** /
+    //Enable USART HW Flow Control
+    USART0->US_MR |= US_MR_USART_MODE_HW_HANDSHAKING;
+    
+    //Disable PIO Control of URTS pin
+    PIOB->PIO_ABSR |= (0u << 25);
+    PIOB->PIO_PDR |= PIO_PB25A_RTS0;
+    
+    //Disable PIO Control of UCTS pin
+    PIOB->PIO_ABSR |= (0u << 26);
+    PIOB->PIO_PDR |= PIO_PB26A_CTS0;
+    
+    //Disable PIO Control of WRTS pin
+    PIOC->PIO_ABSR |= (0u << 27);
+    PIOC->PIO_PDR |= (1u << 27);
+    
+    //Disable PIO Control of WCTS pin
+    PIOC->PIO_ABSR |= (0u << 20);
+    PIOC->PIO_PDR |= (1u << 20);
+    /**/
     while(Serial1.available()){Serial1.read();} 
 }
 

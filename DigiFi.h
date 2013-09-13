@@ -6,6 +6,12 @@
 
 #include <Arduino.h>
 #include <string.h>
+#ifdef __cplusplus
+
+#include "DigiFiUSARTClass.h"
+extern DigiFiUSARTClass Serial1;
+
+#endif
 
 class DigiFi
 {
