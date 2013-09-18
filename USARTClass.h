@@ -25,9 +25,6 @@
 // Includes Atmel CMSIS
 #include <chip.h>
 
-#define DIGIFI_RTS  105
-#define DIGIFI_CTS  104
-
 class USARTClass : public HardwareSerial
 {
   protected:

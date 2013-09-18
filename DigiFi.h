@@ -8,10 +8,10 @@
 #include <string.h>
 #ifdef __cplusplus
 
-#include "DigiFiUSARTClass.h"
-extern DigiFiUSARTClass DigiFiSerial;
-
 #endif
+
+#define DIGIFI_RTS  105
+#define DIGIFI_CTS  104
 
 class DigiFi : Stream
 {

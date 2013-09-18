@@ -31,7 +31,8 @@ void DigiFi::flush( void )
 }
 void DigiFi::setFlowControl( boolean en )
 {
-    return Serial1.setFlowControl(en);
+    Serial1.setCTSPin(DIGIFI_CTS);
+    Serial1.setFlowControl(en);
 }
 size_t DigiFi::write( const uint8_t c )
 {

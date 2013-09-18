@@ -39,8 +39,8 @@ void USARTClass::begin( const uint32_t dwBaudRate )
 {
   if(ctsEn)
   {
-      pinMode(DIGIFI_CTS, OUTPUT);
-      digitalWrite(DIGIFI_CTS, HIGH);
+      pinMode(ctsPin, OUTPUT);
+      digitalWrite(ctsPin, HIGH);
       cts=HIGH;
   }
   
@@ -149,12 +149,12 @@ void USARTClass::ctsCheck()
     avail=available();
     if(avail > DIGIFI_SERIAL_BUFFER_SIZE - 8 && cts==LOW)
     {
-        digitalWrite(DIGIFI_CTS, HIGH);
+        digitalWrite(ctsPin, HIGH);
         cts=HIGH;
     }
     else if(avail < DIGIFI_SERIAL_BUFFER_SIZE - 8 && cts==HIGH)
     {
-        digitalWrite(DIGIFI_CTS, LOW);
+        digitalWrite(ctsPin, LOW);
         cts=LOW;
     }
 }
