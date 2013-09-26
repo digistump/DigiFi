@@ -1,19 +1,70 @@
 // DigiX WiFi module example - released by Digistump LLC/Erik Kettenburg under CC-BY-SA 3.0
 
 #include "DigiFi.h"
-//#define DEBUG
+#define DEBUG
 
+void USART0_Handler(void)
+{
+  Serial1.IrqHandler();
+}
 DigiFi::DigiFi()
 {
 
 }
 
+/* Stream Implementation */
+int DigiFi::available( void )
+{
+    return Serial1.available();
+}
+int DigiFi::peek( void )
+{
+    return Serial1.peek();
+}
+int DigiFi::read( void )
+{
+    return Serial1.read();
+}
+void DigiFi::flush( void )
+{
+    return Serial1.flush();
+}
+void DigiFi::setFlowControl( boolean en )
+{
+    Serial1.setCTSPin(DIGIFI_CTS);
+    Serial1.setFlowControl(en);
+}
+size_t DigiFi::write( const uint8_t c )
+{
+    return Serial1.write(c);
+}
 void DigiFi::begin(int aBaud)
 {
+setFlowControl(true);
     Serial1.begin(aBaud);
+    
+    /** /
+    //Enable USART HW Flow Control
+    USART0->US_MR |= US_MR_USART_MODE_HW_HANDSHAKING;
+    
+    //Disable PIO Control of URTS pin
+    PIOB->PIO_ABSR |= (0u << 25);
+    PIOB->PIO_PDR |= PIO_PB25A_RTS0;
+    
+    //Disable PIO Control of UCTS pin
+    PIOB->PIO_ABSR |= (0u << 26);
+    PIOB->PIO_PDR |= PIO_PB26A_CTS0;
+    
+    //Disable PIO Control of WRTS pin
+    PIOC->PIO_ABSR |= (0u << 27);
+    PIOC->PIO_PDR |= (1u << 27);
+    
+    //Disable PIO Control of WCTS pin
+    PIOC->PIO_ABSR |= (0u << 20);
+    PIOC->PIO_PDR |= (1u << 20);
+    /**/
     while(Serial1.available()){Serial1.read();} 
 }
-
 void DigiFi::startATMode()
 {
     //silly init sequence for wifi module
@@ -32,7 +83,6 @@ void DigiFi::startATMode()
     Serial1.print("AT+E\r");
     debug(readResponse(0));
 }
-
 void DigiFi::endATMode()
 {
     //back to trasparent mode
@@ -42,8 +92,7 @@ void DigiFi::endATMode()
     debug(readResponse(0));
     debug("exit at mode");
 }
- 
-bool DigiFi::ready(){
+ bool DigiFi::ready(){
     startATMode();
     //debug("send cmd");
     //+ok=<ret><CR>< LF ><CR>< LF >
@@ -62,7 +111,6 @@ bool DigiFi::ready(){
     else
         return 0;
 }
-
 bool DigiFi::connect(char *aHost){
     debug("Connect");
     startATMode();
@@ -90,27 +138,22 @@ bool DigiFi::connect(char *aHost){
     
     return 1;
 }
-
 String DigiFi::body(){
     return aBody;
 }
-
 String DigiFi::header(){
     return aHeader;
 }
-
 void DigiFi::debug(String output){
     #ifdef DEBUG
         Serial.println(output);
     #endif
 }
-
 void DigiFi::debugWrite(char output){
     #ifdef DEBUG
         Serial.write(output);
     #endif
 }
-
 bool DigiFi::get(char *aHost, char *aPath){
     if(connect(aHost) == 1){
         //delay(500);
@@ -162,7 +205,6 @@ bool DigiFi::get(char *aHost, char *aPath){
     */
 
 }
-
 String DigiFi::URLEncode(char *msg)
 {
     //const char *msg = *smsg;//smsg.c_str();
@@ -183,7 +225,6 @@ String DigiFi::URLEncode(char *msg)
     }
     return encodedMsg;
 }
-
 bool DigiFi::post(char *aHost, char *aPath, String postData){
     if(connect(aHost) == 1){
 
@@ -246,14 +287,12 @@ bool DigiFi::post(char *aHost, char *aPath, String postData){
     */
 
 }
-
 void DigiFi::close()
 {
     //clear buffer
     while(Serial1.available()){Serial1.read();}
     Serial1.end();
 }
-
 String DigiFi::readResponse(int contentLength) //0 = cmd, 1 = header, 2=body
 {
     String stringBuffer;
@@ -302,12 +341,10 @@ String DigiFi::readResponse(int contentLength) //0 = cmd, 1 = header, 2=body
         lastErr = 0;
     return stringBuffer;
 }
-
 int DigiFi::lastError()
 {
     return lastErr;
 }
-
 String DigiFi::AT(char *cmd, char *params)
 {
     Serial1.print("AT+");
