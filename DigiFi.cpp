@@ -3,10 +3,10 @@
 #include "DigiFi.h"
 #define DEBUG
 
-void USART0_Handler(void)
+/*void USART0_Handler(void)
 {
   Serial1.IrqHandler();
-}
+}*/ // commented out until usart replacement class works
 DigiFi::DigiFi()
 {
 
@@ -31,16 +31,16 @@ void DigiFi::flush( void )
 }
 void DigiFi::setFlowControl( boolean en )
 {
-    Serial1.setCTSPin(DIGIFI_CTS);
-    Serial1.setFlowControl(en);
+    //Serial1.setCTSPin(DIGIFI_CTS);// commented out until usart replacement class works
+    //Serial1.setFlowControl(en);// commented out until usart replacement class works
 }
 size_t DigiFi::write( const uint8_t c )
 {
     return Serial1.write(c);
 }
-void DigiFi::begin(int aBaud)
+void DigiFi::begin(int aBaud, bool en)
 {
-setFlowControl(true);
+    //setFlowControl(en);// commented out until usart replacement class works
     Serial1.begin(aBaud);
     
     /** /
@@ -111,6 +111,63 @@ void DigiFi::endATMode()
     else
         return 0;
 }
+
+//server functions
+
+String DigiFi::server(int port){
+  startATMode();
+  setNetParams("TCP","SERVER",port,"127.0.0.1");
+  //setTCPConn("On"); //is this needed?
+  String response = getSTANetwork();
+  response = response.substring(9);
+  response = response.substring(0,response.indexOf(","));
+  endATMode();
+  return response;
+}
+
+bool DigiFi::serverRequest(){
+  if(Serial1.available()){
+    String response = readResponse(0);
+    response = response.substring(4);
+    response = response.substring(0,response.indexOf("\n"));
+    response = response.substring(0,response.lastIndexOf("HTTP/")-1);
+    debug(response);
+    serverRequestPathString = response;
+    return true;
+  }
+  else
+    return false;
+}
+
+String DigiFi::serverRequestPath(){
+    return serverRequestPathString;
+
+}
+void DigiFi::serverResponse(String response, int code) //defaults to code = 200
+{
+    Serial1.print("HTTP/1.1 ");
+    Serial1.print(code);
+    if(code==200)
+        Serial1.print(" OK");
+    else if(code==404)
+        Serial1.print(" Not Found");
+    else
+        Serial1.print(" OK"); //left as OK to not mess anything up
+    Serial1.print(" \r\n");
+    Serial1.print("Content-Type: text/html;\r\n");
+    Serial1.print("Content-Length: ");
+    Serial1.print(response.length());
+    Serial1.print("\r\n");
+    Serial1.print("Connection: close\r\n\r\n");
+    Serial1.print(response);
+    Serial1.print("\r\n\r\n");
+
+    return;
+}
+
+
+//client functions
+
 bool DigiFi::connect(char *aHost){
     debug("Connect");
     startATMode();
@@ -205,9 +262,9 @@ bool DigiFi::get(char *aHost, char *aPath){
     */
 
 }
-String DigiFi::URLEncode(char *msg)
+String DigiFi::URLEncode(String smsg)
 {
-    //const char *msg = *smsg;//smsg.c_str();
+    const char *msg = smsg.c_str();
     const char *hex = "0123456789abcdef";
     String encodedMsg = "";
 

@@ -17,9 +17,14 @@ class DigiFi : Stream
 {
     public:
         static const int requestTimeout = 15;
+        String serverRequestPathString;
         DigiFi();
-        void begin(int aBaud);
+        void begin(int aBaud, bool en = false);
         bool ready();
+        bool serverRequest();
+        void serverResponse(String response, int code = 200);
+        String server(int port);
+        String serverRequestPath();
         bool connect(char *aHost);
         bool get(char *aHost, char *aPath);
         bool post(char *aHost, char *aPath, String postData);
@@ -31,7 +36,7 @@ class DigiFi : Stream
         int lastError();
         void debug(String output);
         void debugWrite(char output);
-        String URLEncode(char *smsg);
+        String URLEncode(String smsg);
         void setFlowControl(boolean);
         
         /* Stream Implementation */
