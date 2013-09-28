@@ -16,14 +16,17 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
+#include <Arduino.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <wiring_digital.h>
+#include <wiring_constants.h>
 #include "USARTClass.h"
 
 // Constructors ////////////////////////////////////////////////////////////////
 
-USARTClass::USARTClass( Usart* pUsart, IRQn_Type dwIrq, uint32_t dwId, DigiFiRingBuffer* pRx_buffer )
+USARTClass::USARTClass( Usart* pUsart, IRQn_Type dwIrq, uint32_t dwId, RingBuffer* pRx_buffer )
 {
   _rx_buffer = pRx_buffer ;
 
@@ -102,7 +105,7 @@ void USARTClass::end( void )
 
 int USARTClass::available( void )
 {
-  return (uint32_t)(DIGIFI_SERIAL_BUFFER_SIZE + _rx_buffer->_iHead - _rx_buffer->_iTail) % DIGIFI_SERIAL_BUFFER_SIZE ;
+  return (uint32_t)(SERIAL_BUFFER_SIZE + _rx_buffer->_iHead - _rx_buffer->_iTail) % SERIAL_BUFFER_SIZE ;
 }
 
 int USARTClass::peek( void )
@@ -120,7 +123,7 @@ int USARTClass::read( void )
     return -1 ;
 
   uint8_t uc = _rx_buffer->_aucBuffer[_rx_buffer->_iTail] ;
-  _rx_buffer->_iTail = (unsigned int)(_rx_buffer->_iTail + 1) % DIGIFI_SERIAL_BUFFER_SIZE ;
+  _rx_buffer->_iTail = (unsigned int)(_rx_buffer->_iTail + 1) % SERIAL_BUFFER_SIZE ;
   if(ctsEn)
     ctsCheck();
   return uc ;
@@ -147,12 +150,12 @@ size_t USARTClass::write( const uint8_t uc_data )
 void USARTClass::ctsCheck()
 {   
     avail=available();
-    if(avail > DIGIFI_SERIAL_BUFFER_SIZE - 8 && cts==LOW)
+    if(avail > SERIAL_BUFFER_SIZE - 8 && cts==LOW)
     {
         digitalWrite(ctsPin, HIGH);
         cts=HIGH;
     }
-    else if(avail < DIGIFI_SERIAL_BUFFER_SIZE - 8 && cts==HIGH)
+    else if(avail < SERIAL_BUFFER_SIZE - 8 && cts==HIGH)
     {
         digitalWrite(ctsPin, LOW);
         cts=LOW;

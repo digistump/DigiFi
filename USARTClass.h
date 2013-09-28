@@ -8,7 +8,7 @@
 
   This library is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   See the GNU Lesser General Public License for more details.
 
   You should have received a copy of the GNU Lesser General Public
@@ -16,12 +16,14 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#ifndef _DIGIFI_USART_CLASS_
-#define _DIGIFI_USART_CLASS_
+#ifndef _USART_CLASS_
+#define _USART_CLASS_
 
-#include "HardwareSerial.h"
-#include "RingBuffer.h"
-
+#include <HardwareSerial.h>
+#include <RingBuffer.h>
+#include <Arduino.h>
+#include <wiring_digital.h>
+#include <wiring_constants.h>
 // Includes Atmel CMSIS
 #include <chip.h>
 
@@ -38,7 +40,7 @@ class USARTClass : public HardwareSerial
     int ctsEn;
     int ctsPin;
     int avail;
-    
+
   public:
     USARTClass( Usart* pUsart, IRQn_Type dwIrq, uint32_t dwId, RingBuffer* pRx_buffer ) ;
 
@@ -53,7 +55,7 @@ class USARTClass : public HardwareSerial
     size_t write( const uint8_t c ) ;
 
     void ctsCheck();
-    
+
     void IrqHandler( void ) ;
 
 #if defined __GNUC__ /* GCC CS3 */

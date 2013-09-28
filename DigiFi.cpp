@@ -3,10 +3,6 @@
 #include "DigiFi.h"
 #define DEBUG
 
-void USART0_Handler(void)
-{
-  Serial1.IrqHandler();
-}
 DigiFi::DigiFi()
 {
 
@@ -32,7 +28,7 @@ void DigiFi::flush( void )
 void DigiFi::setFlowControl( boolean en )
 {
     Serial1.setCTSPin(DIGIFI_CTS);
-    Serial1.setFlowControl(en);
+    Serial1.enableCTS(en);
 }
 size_t DigiFi::write( const uint8_t c )
 {
