@@ -21,6 +21,7 @@ class DigiFi : Stream
         DigiFi();
         void begin(int aBaud, bool en = false);
         bool ready();
+        void setDebug(bool debugStateVar);
         bool serverRequest();
         void serverResponse(String response, int code = 200);
         String server(int port);
@@ -125,8 +126,9 @@ class DigiFi : Stream
         String readResponse(int contentLength);
         String aHeader;
         String aBody;
-        String lastHost;
+        //String lastHost;
         int lastErr;
+        bool debugState;
 };
 
 #endif

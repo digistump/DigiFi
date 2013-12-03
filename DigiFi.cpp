@@ -3,6 +3,8 @@
 #include "DigiFi.h"
 #define DEBUG
 
+ bool debugState = false;
+
 DigiFi::DigiFi()
 {
 
@@ -171,13 +173,35 @@ bool DigiFi::connect(char *aHost){
     setTCPConn("off");
     //assuming port 80 for now
     String conn=getNetParams();
-    conn=conn.substring(4,conn.length()-4);
-    if(conn != lastHost)
-        setNetParams("TCP","CLIENT",80,aHost);
+    String isServer = conn.substring(8,14);
+    conn=conn.substring(18,conn.length()-1);
+    debug(conn);
+    debug(aHost);
     
-    lastHost = conn;
+    debug(isServer);
+    if(conn != aHost || isServer == "Server"){
+        setNetParams("TCP","CLIENT",80,aHost);
+        debug("setting net params");
+    }
+    else{
+        debug("skipping net params");
+    }
+
+    //lastHost = conn;
+    
+    if(isServer == "Server"){
+        debug("restart for switch to client mode");
+        reset();
+        delay(3000);
+        startATMode();
+        setTCPConn("off");
+
+    }
+
+    
 
     setTCPConn("On");
+    getNetParams();
     
     debug("Checking for link build up");
     String status=getTCPLnk();
@@ -197,15 +221,18 @@ String DigiFi::body(){
 String DigiFi::header(){
     return aHeader;
 }
+void DigiFi::setDebug(bool debugStateVar){
+    debugState = debugStateVar; 
+}
 void DigiFi::debug(String output){
-    #ifdef DEBUG
+    if(debugState == true)
         Serial.println(output);
-    #endif
+    
 }
 void DigiFi::debugWrite(char output){
-    #ifdef DEBUG
+    if(debugState == true)
         Serial.write(output);
-    #endif
+    
 }
 bool DigiFi::get(char *aHost, char *aPath){
     if(connect(aHost) == 1){
