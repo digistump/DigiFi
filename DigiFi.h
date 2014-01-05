@@ -4,34 +4,40 @@
 #ifndef DigiFi_h
 #define DigiFi_h
 
-#include <Arduino.h>
+#include "Arduino.h"    
+#include "Print.h"
 #include <string.h>
-#ifdef __cplusplus
-
-#endif
+#include "Client.h"
+#include "IPAddress.h"
 
 #define DIGIFI_RTS  105
 #define DIGIFI_CTS  104
+#define TCP  1
+#define UDP  0
 
-class DigiFi : Stream
+class DigiFi : public Client
 {
     public:
         static const int requestTimeout = 15;
         String serverRequestPathString;
         DigiFi();
-        void begin(int aBaud, bool en = false);
+        
+        void begin(int aBaud = 9600, bool en = false);
         bool ready();
         void setDebug(bool debugStateVar);
+        void setTCPTimeout(uint16_t timeout);
         bool serverRequest();
         void serverResponse(String response, int code = 200);
-        String server(int port);
+        String server(uint16_t port);
         String serverRequestPath();
-        bool connect(char *aHost);
+        virtual int connect(IPAddress ip, uint16_t port);
+        virtual int connect(const char *host, uint16_t port);
         bool get(char *aHost, char *aPath);
         bool post(char *aHost, char *aPath, String postData);
         void startATMode();
         void endATMode();
         void close();
+        void setMode(uint8_t protocol = TCP);
         String header();
         String body();
         int lastError();
@@ -39,13 +45,27 @@ class DigiFi : Stream
         void debugWrite(char output);
         String URLEncode(String smsg);
         void setFlowControl(boolean);
+
+        //Ethernet implimentation
+        IPAddress localIP();
+        IPAddress subnetMask();
+        IPAddress gatewayIP();
+        IPAddress dnsServerIP();
+        uint8_t maintain();
         
-        /* Stream Implementation */
-        int available( void ) ;
-        int peek( void ) ;
-        int read( void ) ;
-        void flush( void ) ;
-        size_t write( const uint8_t c ) ;
+        /* Client Implementation */
+        virtual uint8_t connected();
+        //uint8_t status();
+        virtual operator bool();
+
+        virtual int available( void ) ;
+        virtual int peek( void ) ;
+        virtual int read( void ) ;
+        virtual int read(uint8_t *buf, size_t size);
+        virtual void flush( void ) ;
+        virtual void stop( void ) ;
+        virtual size_t write( const uint8_t c ) ;
+        virtual size_t write(const uint8_t *buf, size_t size);
         using Print::write ; // pull in write(str) and write(buf, size) from Print
         
         /* AT Wrappers */
@@ -79,7 +99,7 @@ class DigiFi : Stream
         String recvData(int len);//RECV len,data (+ok=0 if timeout (3sec))
         String ping(char *ip);//PING Success Timeout Unknown host
         String getNetParams();//NETP (TCP|UDP),(SERVER|CLIENT),port,IP 
-        void setNetParams(char *proto, char *cs, int port, char *ip);
+        void setNetParams(char *proto, char *cs, int port, const char *ip);
         String getTCPLnk();//TCPLK on|off 
         int getTCPTimeout();//TCPTO 0 <= int <= 600 (Def 300)
         String getTCPConn();//TCPDIS On|off

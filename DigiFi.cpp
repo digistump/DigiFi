@@ -1,9 +1,12 @@
 // DigiX WiFi module example - released by Digistump LLC/Erik Kettenburg under CC-BY-SA 3.0
 
 #include "DigiFi.h"
+
 #define DEBUG
 
  bool debugState = false;
+ uint8_t mode = TCP;
+ uint32_t activityTimeout = 0;
 
 DigiFi::DigiFi()
 {
@@ -13,7 +16,10 @@ DigiFi::DigiFi()
 /* Stream Implementation */
 int DigiFi::available( void )
 {
-    return Serial1.available();
+    uint8_t available = Serial1.available();
+    if(available>0)
+        activityTimeout = millis() +1000;
+    return available;
 }
 int DigiFi::peek( void )
 {
@@ -23,9 +29,19 @@ int DigiFi::read( void )
 {
     return Serial1.read();
 }
+int DigiFi::read(uint8_t *buf, size_t size)
+{
+    return Serial1.readBytes((char*)buf,size);
+}
 void DigiFi::flush( void )
 {
     return Serial1.flush();
+}
+void DigiFi::stop( void )
+{
+    startATMode();
+    setTCPConn("off");
+    endATMode();
 }
 void DigiFi::setFlowControl( boolean en )
 {
@@ -34,8 +50,19 @@ void DigiFi::setFlowControl( boolean en )
 }
 size_t DigiFi::write( const uint8_t c )
 {
+
+    activityTimeout = millis() + (requestTimeout*1000); 
     return Serial1.write(c);
 }
+size_t DigiFi::write(const uint8_t *buf, size_t size)
+{
+    activityTimeout = millis() + (requestTimeout*1000); 
+    return Serial1.write(buf,size);
+}
+DigiFi::operator bool() {
+  return Serial1;
+}
+
 void DigiFi::begin(int aBaud, bool en)
 {
     setFlowControl(en);
@@ -104,20 +131,113 @@ void DigiFi::endATMode()
     endATMode();
     debug(ret);
     //change this to report the AP it is connected to
-    if(ret.substring(0,3) == "+ok" && ret != "+ok=RF Off" && ret != "+ok=Disconnected")
-        return 1;
-    else
+    if(ret.substring(0,10) == "+ok=RF Off" || ret.substring(0,16) == "+ok=Disconnected")
         return 0;
+    else
+        return 1;
+}
+
+uint8_t DigiFi::maintain() {return 0;}
+
+
+IPAddress DigiFi::localIP(){
+
+  startATMode();
+  String response = getSTANetwork();
+  endATMode(); 
+   response = response.substring(response.indexOf(",")+1);
+  response = response.substring(0,response.indexOf(","));
+  String ip1 = response.substring(0,response.indexOf("."));
+  String ip2 = response.substring(response.indexOf(".")+1);
+  String ip3 = ip2.substring(ip2.indexOf(".")+1);
+  String ip4 = ip3.substring(ip3.indexOf(".")+1);
+  ip2 = ip2.substring(0,ip2.indexOf("."));
+  ip3 = ip3.substring(0,ip3.indexOf("."));
+  IPAddress ip(ip1.toInt(),ip2.toInt(),ip3.toInt(),ip4.toInt());
+  return ip;
+}
+
+IPAddress DigiFi::subnetMask(){
+
+  startATMode();
+  String response = getSTANetwork();
+  endATMode();
+    response = response.substring(response.indexOf(",")+1);
+  response = response.substring(response.indexOf(",")+1);
+  response = response.substring(0,response.indexOf(","));
+  String ip1 = response.substring(0,response.indexOf("."));
+  String ip2 = response.substring(response.indexOf(".")+1);
+  String ip3 = ip2.substring(ip2.indexOf(".")+1);
+  String ip4 = ip3.substring(ip3.indexOf(".")+1);
+  ip2 = ip2.substring(0,ip2.indexOf("."));
+  ip3 = ip3.substring(0,ip3.indexOf("."));
+  IPAddress ip(ip1.toInt(),ip2.toInt(),ip3.toInt(),ip4.toInt());
+  return ip;
+}
+
+IPAddress DigiFi::gatewayIP(){
+
+  startATMode();
+  String response = getSTANetwork();
+  endATMode();
+    response = response.substring(response.indexOf(",")+1);
+  response = response.substring(response.indexOf(",")+1);
+  response = response.substring(response.indexOf(",")+1);
+  response = response.substring(0,response.indexOf("\r"));
+  String ip1 = response.substring(0,response.indexOf("."));
+  String ip2 = response.substring(response.indexOf(".")+1);
+  String ip3 = ip2.substring(ip2.indexOf(".")+1);
+  String ip4 = ip3.substring(ip3.indexOf(".")+1);
+  ip2 = ip2.substring(0,ip2.indexOf("."));
+  ip3 = ip3.substring(0,ip3.indexOf("."));
+   IPAddress ip(ip1.toInt(),ip2.toInt(),ip3.toInt(),ip4.toInt());
+   return ip;
+}
+
+IPAddress DigiFi::dnsServerIP(){
+
+  startATMode();
+  String response = getSTADNS();
+  endATMode();
+  response = response.substring(4,response.indexOf("\r"));
+  String ip1 = response.substring(0,response.indexOf("."));
+  String ip2 = response.substring(response.indexOf(".")+1);
+  String ip3 = ip2.substring(ip2.indexOf(".")+1);
+  String ip4 = ip3.substring(ip3.indexOf(".")+1);
+  ip2 = ip2.substring(0,ip2.indexOf("."));
+  ip3 = ip3.substring(0,ip3.indexOf("."));
+  IPAddress ip(ip1.toInt(),ip2.toInt(),ip3.toInt(),ip4.toInt());
+  return ip;
 }
 
 //server functions
 
-String DigiFi::server(int port){
+String DigiFi::server(uint16_t port){
   startATMode();
+
+  String conn=getNetParams();
+  String isServer = conn.substring(8,14);
+
+
   setNetParams("TCP","SERVER",port,"127.0.0.1");
   //setTCPConn("On"); //is this needed?
+  
+
+    if(isServer != "Server"){
+        debug("restart for switch to server mode");
+        reset();
+        delay(3000);
+        
+
+        uint32_t startTime = millis();
+        while(!ready() && millis()-startTime < 30000){
+            delay(1000);
+        }
+        startATMode();
+
+    }
   String response = getSTANetwork();
-  response = response.substring(9);
+  response = response.substring(response.indexOf(",")+1);
   response = response.substring(0,response.indexOf(","));
   endATMode();
   return response;
@@ -163,10 +283,53 @@ void DigiFi::serverResponse(String response, int code) //defaults to code = 200
     return;
 }
 
+void DigiFi::setTCPTimeout(uint16_t timeout){
+    startATMode();
+    Serial1.print("AT+TCPTO=");
+    Serial1.print(timeout);
+    Serial1.print("\r");
+    endATMode();
+
+}
+
+uint8_t DigiFi::connected(){
+
+    uint8_t ret = 0;
+
+    
+    if(Serial1.available() > 0)
+            return 1;
+    
+    if(millis() < activityTimeout)
+        return 1;
+    
+
+    startATMode();
+
+    debug("Checking for link build up");
+    String status=getTCPLnk();
+
+    if (status.substring(0,6)=="+ok=on")
+        ret = 1;
+
+    endATMode();
+
+    
+
+    return ret;
+
+}
+
 
 //client functions
 
-bool DigiFi::connect(char *aHost){
+int DigiFi::connect(IPAddress ip, uint16_t port = 80){
+    //uint8_t* server = rawIPAddress(ip);
+    String server = String(ip[0]) + "." + String(ip[1])+ "." + String(ip[2])+ "." + String(ip[3]);
+    return connect(server.c_str(),port);
+}
+int DigiFi::connect(const char *host, uint16_t port = 80){
+    uint8_t lastMode = TCP;
     debug("Connect");
     startATMode();
     debug("send client settings");
@@ -174,13 +337,22 @@ bool DigiFi::connect(char *aHost){
     //assuming port 80 for now
     String conn=getNetParams();
     String isServer = conn.substring(8,14);
-    conn=conn.substring(18,conn.length()-1);
+
+    if(conn.substring(4,7)=="UDP")
+        lastMode = UDP;
+
+    debug(conn.substring(4,7));
+    conn=conn.substring(conn.lastIndexOf(',')+1,conn.length()-1);
     debug(conn);
-    debug(aHost);
+    debug(host);
     
     debug(isServer);
-    if(conn != aHost || isServer == "Server"){
-        setNetParams("TCP","CLIENT",80,aHost);
+    if(conn != host || isServer == "Server" || lastMode != mode){
+        if(mode == TCP)
+            setNetParams("TCP","CLIENT",port,host);
+        else
+            setNetParams("UDP","CLIENT",port,host);
+
         debug("setting net params");
     }
     else{
@@ -189,7 +361,7 @@ bool DigiFi::connect(char *aHost){
 
     //lastHost = conn;
     
-    if(isServer == "Server"){
+    if(isServer == "Server" || lastMode != mode){
         debug("restart for switch to client mode");
         reset();
         delay(3000);
@@ -198,17 +370,44 @@ bool DigiFi::connect(char *aHost){
 
     }
 
-    
-
     setTCPConn("On");
-    getNetParams();
-    
-    debug("Checking for link build up");
-    String status=getTCPLnk();
-    while(status.substring(0,6)!="+ok=on"){
-        debug("Re-checking for link build up");
-        status=getTCPLnk();
-        debug(status);
+
+    uint32_t linkStart = millis();
+    if(mode == TCP){
+        
+        getNetParams();
+        
+        debug("Checking for link build up");
+        String status=getTCPLnk();
+        while(status.substring(0,6)!="+ok=on"){
+            debug("Status:");
+            debug(status);
+            debug("Re-checking for link build up");
+            status=getTCPLnk();
+            debug(status);
+            if(millis()-linkStart > (requestTimeout*1000)){
+                endATMode();
+                return 0;
+            }
+        }
+    }
+    else{
+        debug("Checking for host ready");
+        String status = ping((char*)host);
+        if(status.substring(0,11)!="+ok=Success"){
+            while(status.substring(0,11)!="+ok=Success"){
+                debug("Re-checking for host ready");
+                status=ping((char*)host);
+                debug(status);
+                if(millis()-linkStart > (requestTimeout*1000)){
+                    endATMode();
+                    return 0;
+                }
+            }
+            debug("Wait for UDP to be ready to receive as well");
+            delay(2000);
+        }
+
     }
 
     endATMode();
@@ -223,6 +422,9 @@ String DigiFi::header(){
 }
 void DigiFi::setDebug(bool debugStateVar){
     debugState = debugStateVar; 
+}
+void DigiFi::setMode(uint8_t protocol){
+    mode = protocol; 
 }
 void DigiFi::debug(String output){
     if(debugState == true)
@@ -587,7 +789,7 @@ String DigiFi::getNetParams()//NETP (TCP|UDP),(SERVER|CLIENT),port,IP
     Serial1.print("AT+NETP\r");
     return readResponse(0);
 }
-void DigiFi::setNetParams(char *proto, char *cs, int port, char *ip)
+void DigiFi::setNetParams(char *proto, char *cs, int port, const char *ip)
 {
     Serial1.print("AT+NETP=");
     Serial1.print(proto);
