@@ -4,9 +4,9 @@
 
 #define DEBUG
 
- bool debugState = false;
- uint8_t mode = TCP;
- uint32_t activityTimeout = 0;
+ bool digiFiDebugState = false;
+ uint8_t digiFiMode = TCP;
+ uint32_t digiFidigiFiActivityTimeout = 0;
 
 DigiFi::DigiFi()
 {
@@ -18,7 +18,7 @@ int DigiFi::available( void )
 {
     uint8_t available = Serial1.available();
     if(available>0)
-        activityTimeout = millis() +1000;
+        digiFiActivityTimeout = millis() +1000;
     return available;
 }
 int DigiFi::peek( void )
@@ -51,12 +51,12 @@ void DigiFi::setFlowControl( boolean en )
 size_t DigiFi::write( const uint8_t c )
 {
 
-    activityTimeout = millis() + (requestTimeout*1000); 
+    digiFiActivityTimeout = millis() + (requestTimeout*1000); 
     return Serial1.write(c);
 }
 size_t DigiFi::write(const uint8_t *buf, size_t size)
 {
-    activityTimeout = millis() + (requestTimeout*1000); 
+    digiFiActivityTimeout = millis() + (requestTimeout*1000); 
     return Serial1.write(buf,size);
 }
 DigiFi::operator bool() {
@@ -300,7 +300,7 @@ uint8_t DigiFi::connected(){
     if(Serial1.available() > 0)
             return 1;
     
-    if(millis() < activityTimeout)
+    if(millis() < digiFiActivityTimeout)
         return 1;
     
 
@@ -347,8 +347,8 @@ int DigiFi::connect(const char *host, uint16_t port = 80){
     debug(host);
     
     debug(isServer);
-    if(conn != host || isServer == "Server" || lastMode != mode){
-        if(mode == TCP)
+    if(conn != host || isServer == "Server" || lastMode != digiFiMode){
+        if(digiFiMode == TCP)
             setNetParams("TCP","CLIENT",port,host);
         else
             setNetParams("UDP","CLIENT",port,host);
@@ -361,7 +361,7 @@ int DigiFi::connect(const char *host, uint16_t port = 80){
 
     //lastHost = conn;
     
-    if(isServer == "Server" || lastMode != mode){
+    if(isServer == "Server" || lastMode != digiFiMode){
         debug("restart for switch to client mode");
         reset();
         delay(3000);
@@ -373,7 +373,7 @@ int DigiFi::connect(const char *host, uint16_t port = 80){
     setTCPConn("On");
 
     uint32_t linkStart = millis();
-    if(mode == TCP){
+    if(digiFiMode == TCP){
         
         getNetParams();
         
@@ -421,18 +421,18 @@ String DigiFi::header(){
     return aHeader;
 }
 void DigiFi::setDebug(bool debugStateVar){
-    debugState = debugStateVar; 
+    digiFiDebugState = debugStateVar; 
 }
 void DigiFi::setMode(uint8_t protocol){
-    mode = protocol; 
+    digiFiMode = protocol; 
 }
 void DigiFi::debug(String output){
-    if(debugState == true)
+    if(digiFiDebugState == true)
         Serial.println(output);
     
 }
 void DigiFi::debugWrite(char output){
-    if(debugState == true)
+    if(digiFiDebugState == true)
         Serial.write(output);
     
 }
@@ -467,11 +467,14 @@ bool DigiFi::get(char *aHost, char *aPath){
         debug(aHeader);
 
         String contentLength = aHeader.substring(aHeader.lastIndexOf("Content-Length: "));
-        contentLength = contentLength.substring(16,contentLength.indexOf("\n"));
-        debug(contentLength);
+        contentLength = contentLength.substring(16,contentLength.indexOf("\r"));
+        debug("Length:"+contentLength+";");
 
-         debug("get body");
-        aBody = readResponse(contentLength.toInt());
+         debug("get body for later");
+         if(contentLength!="0")
+            aBody = readResponse(contentLength.toInt());
+
+        debug("return from get");
 
         return 1;
     }
