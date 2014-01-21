@@ -6,7 +6,7 @@
 
  bool digiFiDebugState = false;
  uint8_t digiFiMode = TCP;
- uint32_t digiFidigiFiActivityTimeout = 0;
+ uint32_t digiFiActivityTimeout = 0;
 
 DigiFi::DigiFi()
 {
@@ -93,6 +93,7 @@ void DigiFi::begin(int aBaud, bool en)
 void DigiFi::startATMode()
 {
     //silly init sequence for wifi module
+    delay(50);
     while(Serial1.available()){Serial1.read();} 
     debug("start at mode");
     debug("next");
