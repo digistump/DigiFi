@@ -35,9 +35,6 @@ void setup() {
   // start the server:
   server.begin();
   server.server(8080); //start server on port 8080
-  server.setTCPTimeout(1); //force wifi to close connection after idle for 1 second
-  //fix for not being able to close client connections
-  //see WebServerChunked for a better approach
   while (server.ready() != 1)
     {
       Serial.println("Connecting to network...");
@@ -64,22 +61,23 @@ void loop() {
       server.println("HTTP/1.1 200 OK");
       server.println("Content-Type: text/html");
       server.println("Connection: close");  // the connection will be closed after completion of the response
-      server.println("Refresh: 5");  // refresh the page automatically every 5 sec
+      //server.println("Refresh: 5");  // refresh the page automatically every 5 sec
+      server.println("Transfer-Encoding: chunked"); 
       server.println();
-      server.println("<!DOCTYPE HTML>");
-      server.println("<html>");
+      server.printChunk("<!DOCTYPE HTML>");
+      server.printChunk("<html>");
       // output the value of each analog input pin
       for (int analogChannel = 0; analogChannel < 6; analogChannel++) {
         int sensorReading = analogRead(analogChannel);
-        server.print("analog input ");
-        server.print(analogChannel);
-        server.print(" is ");
-        server.print(sensorReading);
-        server.println("<br />");
+        server.printChunk("analog input ");
+        server.printChunk(analogChannel);
+        server.printChunk(" is ");
+        server.printChunk(sensorReading);
+        server.printChunk("<br />");
       }
-      server.println("</html>");
-      server.println("");
-      server.println("");
+      server.printChunk("</html>");
+      server.closeChunk();
+      
       currentLineIsBlank = false;
 
     }

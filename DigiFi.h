@@ -37,6 +37,11 @@ class DigiFi : public Client
         void startATMode();
         void endATMode();
         void close();
+        void closeChunk();
+        void printChunk(const char *str);
+        void printChunk(int str);
+        void printChunk(long str);
+        void printChunk(String str);
         void setMode(uint8_t protocol = TCP);
         String header();
         String body();
@@ -101,7 +106,7 @@ class DigiFi : public Client
         String getNetParams();//NETP (TCP|UDP),(SERVER|CLIENT),port,IP 
         void setNetParams(char *proto, char *cs, int port, const char *ip);
         String getTCPLnk();//TCPLK on|off 
-        int getTCPTimeout();//TCPTO 0 <= int <= 600 (Def 300)
+        String getTCPTimeout();//TCPTO 0 <= int <= 600 (Def 300)
         String getTCPConn();//TCPDIS On|off
         void setTCPConn(char *sta);
         String getWSSSID();//WSSSID

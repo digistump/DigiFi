@@ -6,6 +6,7 @@
 
  bool digiFiDebugState = false;
  uint8_t digiFiMode = TCP;
+ bool digiFiServer = false;
  uint32_t digiFiActivityTimeout = 0;
 
 DigiFi::DigiFi()
@@ -59,6 +60,34 @@ size_t DigiFi::write(const uint8_t *buf, size_t size)
     digiFiActivityTimeout = millis() + (requestTimeout*1000); 
     return Serial1.write(buf,size);
 }
+void DigiFi::closeChunk()
+{
+    Serial1.println('0');
+    Serial1.println();
+}
+
+void DigiFi::printChunk(int str)
+{
+    printChunk(String(str));
+}
+void DigiFi::printChunk(long str)
+{
+    printChunk(String(str));
+}
+void DigiFi::printChunk(const char *str)
+{
+    printChunk(String(str));
+}
+void DigiFi::printChunk(String str)
+{
+    Serial1.println(str.length()+2,HEX);
+    Serial1.println(str);
+    Serial1.println();
+}
+
+
+
+
 DigiFi::operator bool() {
   return Serial1;
 }
@@ -93,7 +122,7 @@ void DigiFi::begin(int aBaud, bool en)
 void DigiFi::startATMode()
 {
     //silly init sequence for wifi module
-    delay(50);
+    delay(100);
     while(Serial1.available()){Serial1.read();} 
     debug("start at mode");
     debug("next");
@@ -216,15 +245,18 @@ IPAddress DigiFi::dnsServerIP(){
 String DigiFi::server(uint16_t port){
   startATMode();
 
+  while(Serial1.available()){Serial1.read();}
   String conn=getNetParams();
-  String isServer = conn.substring(8,14);
 
+  String isServer = conn.substring(conn.indexOf("+ok"),conn.length());
+
+  isServer = isServer.substring(8,14);
 
   setNetParams("TCP","SERVER",port,"127.0.0.1");
   //setTCPConn("On"); //is this needed?
-  
 
     if(isServer != "Server"){
+  
         debug("restart for switch to server mode");
         reset();
         delay(3000);
@@ -330,6 +362,7 @@ int DigiFi::connect(IPAddress ip, uint16_t port = 80){
     return connect(server.c_str(),port);
 }
 int DigiFi::connect(const char *host, uint16_t port = 80){
+
     uint8_t lastMode = TCP;
     debug("Connect");
     startATMode();
@@ -795,6 +828,11 @@ String DigiFi::getNetParams()//NETP (TCP|UDP),(SERVER|CLIENT),port,IP
 }
 void DigiFi::setNetParams(char *proto, char *cs, int port, const char *ip)
 {
+    if(cs == "SERVER")
+        digiFiServer = true;
+    else
+        digiFiServer = false;
+
     Serial1.print("AT+NETP=");
     Serial1.print(proto);
     Serial1.print(",");
@@ -811,10 +849,10 @@ String DigiFi::getTCPLnk()//TCPLK on|off
     Serial1.print("AT+TCPLK\r");
     return readResponse(0);
 }
-int DigiFi::getTCPTimeout()//TCPTO 0 <= int <= 600 (Def 300)
+String DigiFi::getTCPTimeout()//TCPTO 0 <= int <= 600 (Def 300)
 {
     Serial1.print("AT+TCPTO\r");
-    readResponse(0);
+    return readResponse(0);
 }
 String DigiFi::getTCPConn()//TCPDIS On|off
 {

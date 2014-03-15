@@ -1,3 +1,4 @@
+
 #include <DigiFi.h>
 
 // ThingSpeak Settings
@@ -48,12 +49,12 @@ void updateThingSpeak(String tsData)
   {         
 
     lastConnectionTime = millis();
-    if(client.post("api.thingspeak.com","/update","api_key="+writeAPIKey+"&status="+client.URLEncode(tsData)))
+    if(wifi.post("api.thingspeak.com","/update","api_key="++writeAPIKey++"&status="+wifi.URLEncode(tsData)))
     {
       Serial.println("Sent to ThingSpeak"); 
       Serial.println();  
       failedCounter = 0;
-      Serial.println(client.body());
+      Serial.println(wifi.body());
     }
     else
     {
