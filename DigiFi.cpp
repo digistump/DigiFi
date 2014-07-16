@@ -44,11 +44,7 @@ void DigiFi::stop( void )
     setTCPConn("off");
     endATMode();
 }
-void DigiFi::setFlowControl( boolean en )
-{
-    Serial1.setCTSPin(DIGIFI_CTS);
-    Serial1.enableCTS(en);
-}
+
 size_t DigiFi::write( const uint8_t c )
 {
 
@@ -94,7 +90,7 @@ DigiFi::operator bool() {
 
 void DigiFi::begin(int aBaud, bool en)
 {
-    setFlowControl(en);
+
     Serial1.begin(aBaud);
     
     /** /
