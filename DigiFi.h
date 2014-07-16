@@ -49,7 +49,6 @@ class DigiFi : public Client
         void debug(String output);
         void debugWrite(char output);
         String URLEncode(String smsg);
-        void setFlowControl(boolean);
 
         //Ethernet implimentation
         IPAddress localIP();
@@ -61,7 +60,7 @@ class DigiFi : public Client
         /* Client Implementation */
         virtual uint8_t connected();
         //uint8_t status();
-        virtual operator bool();
+
 
         virtual int available( void ) ;
         virtual int peek( void ) ;
