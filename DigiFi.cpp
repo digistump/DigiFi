@@ -82,12 +82,6 @@ void DigiFi::printChunk(String str)
 }
 
 
-
-
-DigiFi::operator bool() {
-  return Serial1;
-}
-
 void DigiFi::begin(int aBaud, bool en)
 {
 
