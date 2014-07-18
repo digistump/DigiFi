@@ -552,10 +552,14 @@ int DigiFi::get(char *aHost, char *aPath){
         contentLength = contentLength.substring(16,contentLength.indexOf("\r"));
         debug("Length:"+contentLength+";");
 
-         debug("get body for later");
-         if(contentLength!="0")
+		if(contentLength.toInt() != 0) {
+			debug("get body for later");
             aBody = readResponse(contentLength.toInt());
-
+		}
+		else
+		{
+			debug("Skip body");
+		}
         debug("return from get");
 		
 		// work out the returncode
@@ -634,7 +638,7 @@ int DigiFi::post(char *aHost, char *aPath, String postData) {
         if(success == false)
             return -2;
 
-        debug("get header");
+        debug("Get header");
         aHeader = readResponse(0);
 
         debug(aHeader);
@@ -642,9 +646,16 @@ int DigiFi::post(char *aHost, char *aPath, String postData) {
         String contentLength = aHeader.substring(aHeader.lastIndexOf("Content-Length: "));
         contentLength = contentLength.substring(16,contentLength.indexOf("\n"));
         debug(contentLength);
-
-        debug("get body");
-        aBody = readResponse(contentLength.toInt());
+		
+		if(contentLength.toInt() != 0) {
+			debug("Get body");
+            aBody = readResponse(contentLength.toInt());
+		}
+		else
+		{
+			debug("Skip body");
+		}
+        
 		// connection: close hard-coded, so disconnect here.
 		disconnect();
 		// TODO: 
@@ -690,6 +701,8 @@ String DigiFi::readResponse(int contentLength) //0 = cmd, 1 = header, 2=body
     int curLength = 0;
     bool end = false;
     Serial1.flush();
+	bool timeout = false;
+	int st = millis();
 
     while (!end)
     {
@@ -721,12 +734,28 @@ String DigiFi::readResponse(int contentLength) //0 = cmd, 1 = header, 2=body
             
             stringBuffer += inByte;
         }
+		else
+		{
+			// need a timeout otherwise we can get stuck in 
+			// here if the server drops out for some reason
+			// does though imply that 15s is sufficient to
+			// retrieve whatever it is your after
+			// seems OK though as DigiX doesn't have a large
+			// amount of memory
+			if(millis() - st > requestTimeout * 1000) {
+				timeout = true;
+				break;
+			}
+		}
     }
 
-    if(stringBuffer.substring(0,4) == "+ERR")
+    if(stringBuffer.substring(0,4) == "+ERR") {
         lastErr = stringBuffer.substring(5,2).toInt();
-    else
+	} else if (timeout) {
+		lastErr = -1;
+	} else {
         lastErr = 0;
+	}
     return stringBuffer;
 }
 int DigiFi::lastError()
