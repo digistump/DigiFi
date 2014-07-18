@@ -121,26 +121,61 @@ void DigiFi::begin(int aBaud, bool en)
 }
 void DigiFi::startATMode()
 {
+    bool ATsuccess = false;
+	// ensure the module properly acknowledges
+	// our request for AT mode. Otherwise retry.
+	int retries = 0; // TODO: make constant
+    do {
+	  if (retries > 5) {
+	    debug("Retried 5 times, bailing");
+		// need to change return-types perhaps to
+		// trigger some kind of reset higher up.
+		return;
+	  }
+	  ATsuccess = startATSequence();
+	  retries += 1;
+	} while (!ATsuccess);
+	debug("Send client acknowledge AT mode");
+    Serial1.print("a"); 
+    debug(readResponse(0));
+    debug("echo off");
+    Serial1.print("AT+E\r");
+    debug(readResponse(0));
+}
+bool DigiFi::startATSequence(){
     //silly init sequence for wifi module
-    delay(100);
+    delay(50); // changed from 100
+	// clear the incoming buffer
     while(Serial1.available()){Serial1.read();} 
     debug("start at mode");
     debug("next");
     Serial1.write("+++");
     debug("wait for a");
-    while(!Serial1.available()){delay(1);}
-    debug("clear buffer");
-    while(Serial1.available()){Serial1.read();}
-    Serial1.print("A"); 
-    debug(readResponse(0));
-
-    debug("echo off");
-    Serial1.print("AT+E\r");
-    debug(readResponse(0));
+	// there's a ~4s (see datasheet for newer G2 module)
+	// time within which the handshake must complete
+	// if time is longer than that, it's failed.
+	// TODO: turn the timeout into a constant
+	unsigned long timeout = millis() + (4*1000);
+    while(!Serial1.available()){
+	  delay(1);
+      if (millis() > timeout) {
+	    debug("FAILED: AT handshake timeout");
+	    return false;
+	  }
+	}
+    debug("check for a");
+    char resp = Serial1.read();
+	if (resp == 'a') {
+	  debug("OK: module acknowledge AT mode");
+	  return true;
+	}
+    // otherwise it's failed.
+	debug("FAILED: module acknowledge AT mode");
+	return false;
 }
 void DigiFi::endATMode()
 {
-    //back to trasparent mode
+    //back to transparent mode
     Serial1.print("AT+E\r");
     debug(readResponse(0)); 
     Serial1.print("AT+ENTM\r");
@@ -362,7 +397,7 @@ int DigiFi::connect(IPAddress ip, uint16_t port = 80){
     return connect(server.c_str(),port);
 }
 int DigiFi::connect(const char *host, uint16_t port = 80){
-
+    debug("::connect(*char host, uint port)");
     uint8_t lastMode = TCP;
     debug("Connect");
     startATMode();
@@ -401,11 +436,9 @@ int DigiFi::connect(const char *host, uint16_t port = 80){
         delay(3000);
         startATMode();
         setTCPConn("off");
-
     }
 
     setTCPConn("On");
-
     uint32_t linkStart = millis();
     if(digiFiMode == TCP){
         
@@ -448,6 +481,14 @@ int DigiFi::connect(const char *host, uint16_t port = 80){
     
     return 1;
 }
+
+int DigiFi::disconnect() {
+    debug("::disconnect(*char host, uint port)");
+    startATMode();
+    setTCPConn("off");
+	endATMode();
+	return 1;
+}
 String DigiFi::body(){
     return aBody;
 }
@@ -470,7 +511,14 @@ void DigiFi::debugWrite(char output){
         Serial.write(output);
     
 }
-bool DigiFi::get(char *aHost, char *aPath){
+/*
+Return value should be the HTTP return code (i.e. 100 and above).
+If something else fails, the non-HTTP error codes are negative numbers.
+-1 - connect failure
+-2 - connect successful, but request failed
+-3 - invalid HTTP return-code returned
+*/
+int DigiFi::get(char *aHost, char *aPath){
     if(connect(aHost) == 1){
         //delay(500);
         Serial1.print("GET ");
@@ -496,7 +544,7 @@ bool DigiFi::get(char *aHost, char *aPath){
         }
         debug("get header");
         if(success == false)
-            return 0;
+            return -2;
         aHeader = readResponse(0);
         debug(aHeader);
 
@@ -504,25 +552,33 @@ bool DigiFi::get(char *aHost, char *aPath){
         contentLength = contentLength.substring(16,contentLength.indexOf("\r"));
         debug("Length:"+contentLength+";");
 
-         debug("get body for later");
-         if(contentLength!="0")
+		if(contentLength.toInt() != 0) {
+			debug("get body for later");
             aBody = readResponse(contentLength.toInt());
-
+		}
+		else
+		{
+			debug("Skip body");
+		}
         debug("return from get");
-
-        return 1;
+		
+		// work out the returncode
+		int iRetCode = aHeader.substring(9,12).toInt();
+		if (iRetCode == 0) {
+			debug("Invalid return code");
+			return -3;
+		}
+        return iRetCode;
     }
     else
-        return 0;
+        return -1;
 
     //To do:
     /*
     User agent!
     Better handle timeouts/other errors
-    Actually look at returned header for status
     Efficiency!
     */
-
 }
 String DigiFi::URLEncode(String smsg)
 {
@@ -544,11 +600,15 @@ String DigiFi::URLEncode(String smsg)
     }
     return encodedMsg;
 }
-bool DigiFi::post(char *aHost, char *aPath, String postData){
+/*
+Return value should be the HTTP return code (i.e. 100 and above).
+If something else fails, the non-HTTP error codes are negative numbers.
+-1 - connect failure
+-2 - connect successful, but request failed
+-3 - invalid HTTP return-code returned
+*/
+int DigiFi::post(char *aHost, char *aPath, String postData) {
     if(connect(aHost) == 1){
-
-
-
         Serial1.print("POST ");
         Serial1.print(aPath);
         Serial1.print(" HTTP/1.1\r\nHost: ");
@@ -560,7 +620,6 @@ bool DigiFi::post(char *aHost, char *aPath, String postData){
         Serial1.print(postData);
         Serial1.print("\r\n\r\n");
         Serial1.flush();
-
 
         debug("wait for response...");
         bool success = true;
@@ -577,31 +636,52 @@ bool DigiFi::post(char *aHost, char *aPath, String postData){
         }
         
         if(success == false)
-            return 0;
+            return -2;
 
-        debug("get header");
+        debug("Get header");
         aHeader = readResponse(0);
-        debug(aHeader);
 
+        debug(aHeader);
 
         String contentLength = aHeader.substring(aHeader.lastIndexOf("Content-Length: "));
         contentLength = contentLength.substring(16,contentLength.indexOf("\n"));
         debug(contentLength);
-
-        debug("get body");
-        aBody = readResponse(contentLength.toInt());
-
-        return 1;
+		
+		if(contentLength.toInt() != 0) {
+			debug("Get body");
+            aBody = readResponse(contentLength.toInt());
+		}
+		else
+		{
+			debug("Skip body");
+		}
+        
+		// connection: close hard-coded, so disconnect here.
+		disconnect();
+		// TODO: 
+		// + make connection: close header optional
+		//   and run disconnect dependent on that option
+		// + remove the disconnect command (TCPDIS=off)
+		//   from the start of the connect command.
+		//   but need to have connection checking upfront
+		//   first.
+		
+		// work out the returncode
+		int iRetCode = aHeader.substring(9,12).toInt();
+		if (iRetCode == 0) {
+			debug("Invalid return code");
+			return -3;
+		}
+        return iRetCode;
     }
     else
-        return 0;
+        return -1;
 
     //To do:
     /*
     User agent!
     accept post data as array or array or string, etc
     Better handle timeouts/other errors
-    Actually look at returned header for status
     Efficiency!
     */
 
@@ -621,6 +701,8 @@ String DigiFi::readResponse(int contentLength) //0 = cmd, 1 = header, 2=body
     int curLength = 0;
     bool end = false;
     Serial1.flush();
+	bool timeout = false;
+	int st = millis();
 
     while (!end)
     {
@@ -629,7 +711,7 @@ String DigiFi::readResponse(int contentLength) //0 = cmd, 1 = header, 2=body
         {
             inByte = Serial1.read();
             curLength++;
-            debugWrite(inByte);
+            //debugWrite(inByte);// disabled, leads to lots of duplicate debug logging
 
             if(contentLength == 0){
                 if (inByte == '\n' && rCount == 2 && nCount == 1)
@@ -652,12 +734,28 @@ String DigiFi::readResponse(int contentLength) //0 = cmd, 1 = header, 2=body
             
             stringBuffer += inByte;
         }
+		else
+		{
+			// need a timeout otherwise we can get stuck in 
+			// here if the server drops out for some reason
+			// does though imply that 15s is sufficient to
+			// retrieve whatever it is your after
+			// seems OK though as DigiX doesn't have a large
+			// amount of memory
+			if(millis() - st > requestTimeout * 1000) {
+				timeout = true;
+				break;
+			}
+		}
     }
 
-    if(stringBuffer.substring(0,4) == "+ERR")
+    if(stringBuffer.substring(0,4) == "+ERR") {
         lastErr = stringBuffer.substring(5,2).toInt();
-    else
+	} else if (timeout) {
+		lastErr = -1;
+	} else {
         lastErr = 0;
+	}
     return stringBuffer;
 }
 int DigiFi::lastError()
