@@ -32,8 +32,9 @@ class DigiFi : public Client
         String serverRequestPath();
         virtual int connect(IPAddress ip, uint16_t port);
         virtual int connect(const char *host, uint16_t port);
-        bool get(char *aHost, char *aPath);
-        bool post(char *aHost, char *aPath, String postData);
+		virtual int disconnect();
+        int get(char *aHost, char *aPath);
+        int post(char *aHost, char *aPath, String postData);
         void startATMode();
         void endATMode();
         void close();
@@ -148,11 +149,13 @@ class DigiFi : public Client
         void setWifiCfgPassword(char *aswd);
     private:
         String readResponse(int contentLength);
+		bool startATSequence();
         String aHeader;
         String aBody;
         //String lastHost;
         int lastErr;
         bool debugState;
+		
 };
 
 #endif
